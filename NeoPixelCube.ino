@@ -85,6 +85,9 @@ void columnRotate()
 
 void runTests() 
 {
+  // negative test out of range
+  cube.Set( 99,99,99, 0);
+  
   // individual test
   cube.SetAll(0);
   

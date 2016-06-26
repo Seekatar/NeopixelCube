@@ -1,6 +1,6 @@
 #include "NeoPixelCube.h"
 
-NeoPixelCube::NeoPixelCube(unsigned int sides, unsigned int pin, unsigned int flags )
+NeoPixelCube::NeoPixelCube(byte sides, unsigned int pin, unsigned int flags )
 {
     // Parameter 1 = number of pixels in strip
     // Parameter 2 = Arduino pin number (most are valid)
@@ -11,10 +11,13 @@ NeoPixelCube::NeoPixelCube(unsigned int sides, unsigned int pin, unsigned int fl
     //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)    
     _strip =  Adafruit_NeoPixel(sides*sides*sides, pin, flags);
     _sides = sides;
+
+    // i'd like to dynamically set the array, but had problems initializing it 
+    // from static data.
 //    _cube = new unsigned int **[_sides];
 //    for ( int x = 0; x < sides; x++ )
 //    {
-//        unsigned int **layer = new unsigned int *[_sides];
+//        byte **layer = new unsigned int *[_sides];
 //        for ( int y = 0; y < sides; y++ )
 //        {
 //            layer[y] = new unsigned int[_sides];
@@ -41,6 +44,8 @@ NeoPixelCube::NeoPixelCube(unsigned int sides, unsigned int pin, unsigned int fl
     21 22 23
     26 25 24
     */
+    // NOTE: this is in z,y,x format to make it easy 
+    // to map to wiring, in copy below _cube is x,y,z 
     static unsigned int cube[3][3][3] = 
             {{{8,7,6},
               {3,4,5},
@@ -56,14 +61,14 @@ NeoPixelCube::NeoPixelCube(unsigned int sides, unsigned int pin, unsigned int fl
                };
                
     Serial.begin(57600);
-               
-    for ( int x = 0; x < _sides; x++ )
+                   
+    for ( byte x = 0; x < _sides; x++ )
     {
-      for ( int y = 0; y < _sides; y++ )
+      for ( byte y = 0; y < _sides; y++ )
       {
-        for ( int z = 0; z < _sides; z++ )
+        for ( byte z = 0; z < _sides; z++ )
         {
-          _cube[x][y][z] = cube[x][y][z];
+          _cube[z][y][x] = cube[x][y][z];
         }
       }
     }
@@ -74,11 +79,11 @@ NeoPixelCube::NeoPixelCube(unsigned int sides, unsigned int pin, unsigned int fl
 void NeoPixelCube::dumpCube(const char *msg)
 {
     Serial.print(msg);Serial.print(" dump ");
-    for ( int x = 0; x < _sides; x++ )
+    for ( byte x = 0; x < _sides; x++ )
     {
-      for ( int y = 0; y < _sides; y++ )
+      for ( byte y = 0; y < _sides; y++ )
       {
-        for ( int z = 0; z < _sides; z++ )
+        for ( byte z = 0; z < _sides; z++ )
         {
           Serial.print("_cube ");
           Serial.print(x);Serial.print(", ");
@@ -88,6 +93,33 @@ void NeoPixelCube::dumpCube(const char *msg)
         }
       }
     }
+    Serial.flush();
+}
+
+bool NeoPixelCube::checkArrayIndex(const char *from, byte x, byte y, byte z )
+{
+    if ( x >= _sides || 
+         y >= _sides ||
+         z >= _sides)
+    {
+        Serial.print("Invalid index from '");
+        Serial.print(from);
+        Serial.print("' ");
+        Serial.print(x);
+        Serial.print("," );
+        Serial.print(y);
+        Serial.print("," );
+        Serial.println(z);
+        Serial.flush();
+        return false;
+    }
+    else
+        return true;
+}
+
+void NeoPixelCube::writeErrorToSerial(const char *msg)
+{
+    Serial.println(msg);
     Serial.flush();
 }
 
@@ -102,27 +134,30 @@ void NeoPixelCube::Begin()
 
   _strip.begin();
   _strip.show(); // Initialize all pixels to 'off'  
+
   dumpCube("begin");
 }
 
-void NeoPixelCube::Set(unsigned int column, unsigned int row, unsigned int layer, uint32_t color )
+void NeoPixelCube::Set(byte column, byte row, byte layer, uint32_t color )
 {
-    _strip.setPixelColor( at(column,row,layer), color );
+    if ( checkArrayIndex("Set", column, row, layer ) )
+        _strip.setPixelColor( at(column,row,layer), color );
 }
 
-void NeoPixelCube::Set(unsigned int ledNo, uint32_t color )
+void NeoPixelCube::Set(byte ledNo, uint32_t color )
 {
-  _strip.setPixelColor( ledNo, color );
+    if ( ledNo < _sides*_sides*_sides )
+	    _strip.setPixelColor( ledNo, color );
 }
 
 // set all the leds in the cube
 void NeoPixelCube::SetAll(uint32_t color )
 {
-    for ( unsigned int x = 0; x < _sides; x++ )
+    for ( byte x = 0; x < _sides; x++ )
     {
-        for ( unsigned int y = 0; y < _sides; y++ )
+        for ( byte y = 0; y < _sides; y++ )
         {
-            for ( unsigned int z = 0; z < _sides; z++ )
+            for ( byte z = 0; z < _sides; z++ )
             {
                 _strip.setPixelColor( at(x,y,z), color );
             }
@@ -132,54 +167,63 @@ void NeoPixelCube::SetAll(uint32_t color )
 }
 
 
-void NeoPixelCube::SetLayer(unsigned int layer, uint32_t color )
+void NeoPixelCube::SetLayer(byte layer, uint32_t color )
 {
-    for ( unsigned int x = 0; x < _sides; x++ )
+    if ( checkArrayIndex("Set layer", 0, 0, layer))
     {
-        for ( unsigned int y = 0; y < _sides; y++ )
+        for ( byte x = 0; x < _sides; x++ )
         {
-            _strip.setPixelColor( at(x,y,layer), color );            
+            for ( byte y = 0; y < _sides; y++ )
+            {
+                _strip.setPixelColor( at(x,y,layer), color );            
+            }
         }
     }
 }
 
-void NeoPixelCube::SetFrontFace(unsigned int y, uint32_t color )
+void NeoPixelCube::SetFrontFace(byte y, uint32_t color )
 {
-    for ( unsigned int x = 0; x < _sides; x++ )
+    for ( byte x = 0; x < _sides; x++ )
         SetStack(x,y,color);
 }
 
-void NeoPixelCube::SetSideFace(unsigned int x, uint32_t color )
+void NeoPixelCube::SetSideFace(byte x, uint32_t color )
 {
-    for ( unsigned int y = 0; y < _sides; y++ )
+    for ( byte y = 0; y < _sides; y++ )
         SetStack(x,y,color);
 }
 
-void NeoPixelCube::SetRow(unsigned int layer, unsigned int row, uint32_t color )
+void NeoPixelCube::SetRow(byte layer, byte row, uint32_t color )
 {
-    for ( unsigned int x = 0; x < _sides; x++ )
+    if ( checkArrayIndex("SetRow", 0, row, layer ) )
     {
-        _strip.setPixelColor( at(x,row,layer), color );            
+        for ( byte x = 0; x < _sides; x++ )
+        {
+            _strip.setPixelColor( at(x,row,layer), color );            
+        }
     }
-    
 }
     
-void NeoPixelCube::SetColumn(unsigned int layer, unsigned int column, uint32_t color )
+void NeoPixelCube::SetColumn(byte layer, byte column, uint32_t color )
 {
-    for ( unsigned int y = 0; y < _sides; y++ )
+    if ( checkArrayIndex("SetColumn", column, 0, layer ) )
     {
-        _strip.setPixelColor( at(column,y,layer), color );            
+        for ( byte y = 0; y < _sides; y++ )
+        {
+            _strip.setPixelColor( at(column,y,layer), color );            
+        }
     }
-    
 }
 
-void NeoPixelCube::SetStack(unsigned int row, unsigned int column, uint32_t color )
+void NeoPixelCube::SetStack(byte row, byte column, uint32_t color )
 {
-    for ( unsigned int z = 0; z < _sides; z++ )
+    if ( checkArrayIndex("SetStack", column, row, 0 ) )
     {
-        _strip.setPixelColor( at(row,column,z), color );            
+        for ( byte z = 0; z < _sides; z++ )
+        {
+            _strip.setPixelColor( at(row,column,z), color );            
+        }
     }
-    
 }
 
 // show all the made since last show

@@ -7,15 +7,27 @@
 #include <avr/power.h>
 #endif
 
+/*
+  Class for controlling a cube of NeoPixels
+
+  This currently uses 3x3
+
+  This uses Adafruit_NeoPixel library to drive the neopixels.
+
+  Call methods on this class to set the values, then call Show() to 
+  actually change the leds.
+*/
 class NeoPixelCube
 {
 
   private:
     Adafruit_NeoPixel _strip;
-    unsigned int _sides;
+    byte _sides;
     unsigned int _cube[3][3][3];
     void dumpCube(const char *);
-    inline unsigned int at(unsigned int x,unsigned int y,unsigned int z) { return _cube[z][y][x]; }
+    inline unsigned int at(byte x,byte y,byte z) { return _cube[x][y][z]; }
+    void writeErrorToSerial(const char *msg);
+    bool checkArrayIndex(const char *from, byte x, byte y, byte z );
     
   public:
 
@@ -24,41 +36,39 @@ class NeoPixelCube
       return _strip.Color(r, g, b);
     }
 
-    NeoPixelCube(unsigned int sides = 3, unsigned int pin = 6, unsigned int flags =  NEO_RGB + NEO_KHZ800 );
+    // flags are passed to Adafruit_NeoPixel
+    NeoPixelCube(byte sides = 3, unsigned int pin = 6, unsigned int flags =  NEO_RGB + NEO_KHZ800 );
 
     void Begin();
 
-    // set the array of cube layout if yours doesn't use the default
-    void SetLayout( int ***cube);
-
     // set one led per address
-    void Set(unsigned int ledNo, uint32_t color );
+    void Set(byte ledNo, uint32_t color );
 
     // set one led x,y,z
-    void Set(unsigned int column, unsigned int row, unsigned int layer, uint32_t color );
+    void Set(byte column, byte row, byte layer, uint32_t color );
 
     // set all the leds in the cube
     void SetAll(uint32_t color );
 
     // set all the leds in one layer
-    void SetLayer(unsigned int layer, uint32_t color );
+    void SetLayer(byte layer, uint32_t color );
 
     // set all the leds in one face (vertical layer)
-    void SetFrontFace(unsigned int y, uint32_t color );
+    void SetFrontFace(byte y, uint32_t color );
 
     // set all the leds in one face (vertical layer)
-    void SetSideFace(unsigned int x, uint32_t color );
+    void SetSideFace(byte x, uint32_t color );
 
     // set all the leds in one row in one layer
-    void SetRow(unsigned int layer, unsigned int row, uint32_t color );
+    void SetRow(byte layer, byte row, uint32_t color );
 
     // set all the leds in one column in one layer
-    void SetColumn(unsigned int layer, unsigned int column, uint32_t color );
+    void SetColumn(byte layer, byte column, uint32_t color );
 
     // set all the leds in one vertical stack (one pixel per layer)
-    void SetStack(unsigned int row, unsigned int column, uint32_t color );
+    void SetStack(byte row, byte column, uint32_t color );
 
-    // show all the made since last show
+    // show all the changes made since last Show()
     void Show();
 };
 
