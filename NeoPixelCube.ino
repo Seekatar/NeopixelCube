@@ -1,5 +1,20 @@
 #include "NeoPixelCube.h"
 
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos, NeoPixelCube &cube) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return cube.Color((255 - WheelPos * 3) * .5, 0, (WheelPos * 3) * .5);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return cube.Color(0, (WheelPos * 3) * .5, (255 - WheelPos * 3) * .5);
+  }
+  WheelPos -= 170;
+  return cube.Color((WheelPos * 3) * .5, (255 - WheelPos * 3) * .5, 0);
+}
+
 // sample sketch for NeoPixel cube
 
 unsigned int sides = 3;
@@ -11,16 +26,39 @@ NeoPixelCube cube = NeoPixelCube(sides,PIN, NEO_RGB + NEO_KHZ800);
 int wait = 100;
 int layer = 0;
 unsigned int x = 0, y = 0, z = 0;
+byte c = 100;
+unsigned int start;
 
 void setup() {
 
   Serial.begin(57600);
   
   cube.Begin();
+  start = millis();
+//  cube.SetAll(cube.Color(20,0,0));
+//  cube.Set( 1,1,1, cube.Color(0,0,255));
+//  cube.Show();
 
 }
+int loopDelay = 1000;
 
 void loop() {
+
+  unsigned int _now = millis();
+  if ( _now - start > loopDelay )
+  {
+    start = _now;
+    uint32_t color = Wheel(c++, cube);
+    Serial.print( "Color ");
+    Serial.println(color, HEX);
+    cube.SetAll(color); // cube.Color(20,0,0));  
+    cube.Set( 1,1,1, cube.Color(0,0,255));
+    cube.Show();
+    delay(loopDelay);
+  }
+}
+
+void loopTests() {
   runTests();
   stackRotate();
   rowRotate();
